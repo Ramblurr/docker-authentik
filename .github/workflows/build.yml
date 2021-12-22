@@ -15,17 +15,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Set up Docker build
-        id: build
-        uses: docker/setup-build-action@v1
-
-      - name: Cache Docker layers
-        uses: actions/cache@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
         with:
-          path: /tmp/.build-cache
-          key: ${{ runner.os }}-build-${{ hashFiles('cache_buster') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ hashFiles('cache_buster') }}-
+          platforms: all
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v1
@@ -38,15 +35,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          builder: ${{ steps.build.outputs.name }}
+          builder: ${{ steps.buildx.outputs.name }}
           context: ./
-          target: prod
           platforms: linux/amd64
           tags: ramblurr/authentik:stable
-          cache-from: type=local,src=/tmp/.build-cache
-          cache-to: type=local,dest=/tmp/.build-cache-new
-
-      - name: Move cache
-        run: |
-          rm -rf /tmp/.build-cache
-          mv /tmp/.build-cache-new /tmp/.build-cache
